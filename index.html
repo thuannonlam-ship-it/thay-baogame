@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subway Runner - Custom Character</title>
+    <style>
+        body {
+            margin: 0;
+            background: #111;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        canvas {
+            border: 3px solid #00ffcc;
+            border-radius: 8px;
+            background: #222;
+            box-shadow: 0 0 25px rgba(0, 255, 204, 0.3);
+        }
+        #instructions {
+            margin-top: 12px;
+            font-size: 15px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Subway Runner - Character Edition</h1>
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+    <div id="instructions">Dùng phím mũi tên <b>Trái / Phải</b> để chuyển làn đường!</div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // Tải ảnh nhân vật
+        const playerImg = new Image();
+        playerImg.src = 'player.jpg'; // Tên file ảnh nhân vật trong cùng thư mục
+
+        // 3 làn đường: vị trí X tâm làn
+        const lanes = [80, 200, 320];
+        let currentLane = 1;
+
+        let player = {
+            y: 480,
+            width: 50,
+            height: 70
+        };
+
+        let obstacles = [];
+        let score = 0;
+        let gameSpeed = 6;
+        let isGameOver = false;
+
+        // Bắt sự kiện phím bấm
+        document.addEventListener("keydown", (e) => {
+            if (isGameOver) {
+                resetGame();
+                return;
+            }
+            if (e.key === "ArrowLeft" && currentLane > 0) {
+                currentLane--;
+            } else if (e.key === "ArrowRight" && currentLane < lanes.length - 1) {
+                currentLane++;
+            }
+        });
+
+        function spawnObstacle() {
+            let randomLane = Math.floor(Math.random() * lanes.length);
+            obstacles.push({
+                lane: randomLane,
+                y: -100,
+                width: 45,
+                height: 45,
+                color: "#ff3366"
+            });
+        }
+
+        function resetGame() {
+            obstacles = [];
+            score = 0;
+            gameSpeed = 6;
+            currentLane = 1;
+            isGameOver = false;
+            loop();
+        }
+
+        let spawnTimer = 0;
+        function update() {
+            if (isGameOver) return;
+
+            gameSpeed = 6 + Math.floor(score / 400);
+
+            spawnTimer++;
+            if (spawnTimer > 50 - Math.min(25, Math.floor(score / 300))) {
+                spawnObstacle();
+                spawnTimer = 0;
+            }
+
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                obstacles[i].y += gameSpeed;
+
+                // Xử lý va chạm
+                if (
+                    obstacles[i].lane === currentLane &&
+                    obstacles[i].y + obstacles[i].height > player.y &&
+                    obstacles[i].y < player.y + player.height
+                ) {
+                    isGameOver = true;
+                }
+
+                if (obstacles[i].y > canvas.height) {
+                    obstacles.splice(i, 1);
+                    score += 100;
+                }
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Vẽ đường phân làn
+            ctx.strokeStyle = "#444";
+            ctx.lineWidth = 2;
+            ctx.setLineDash([15, 15]);
+            ctx.beginPath();
+            ctx.moveTo(140, 0); ctx.lineTo(140, canvas.height);
+            ctx.moveTo(260, 0); ctx.lineTo(260, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Vẽ nhân vật (ảnh chụp)
+            let playerX = lanes[currentLane] - player.width / 2;
+            if (playerImg.complete && playerImg.naturalWidth !== 0) {
+                ctx.drawImage(playerImg, playerX, player.y, player.width, player.height);
+            } else {
+                ctx.fillStyle = "#00ffcc";
+                ctx.fillRect(playerX, player.y, player.width, player.height);
+            }
+
+            // Vẽ chướng ngại vật
+            for (let obs of obstacles) {
+                let obsX = lanes[obs.lane] - obs.width / 2;
+                ctx.fillStyle = obs.color;
+                ctx.fillRect(obsX, obs.y, obs.width, obs.height);
+            }
+
+            // Điểm số
+            ctx.fillStyle = "white";
+            ctx.font = "bold 20px Arial";
+            ctx.fillText("Điểm: " + score, 20, 35);
+
+            // Màn hình thua
+            if (isGameOver) {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = "#ff3366";
+                ctx.font = "bold 32px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText("THUA RỒI!", canvas.width / 2, canvas.height / 2 - 20);
+                
+                ctx.fillStyle = "white";
+                ctx.font = "16px Arial";
+                ctx.fillText("Nhấn phím bất kỳ để chơi lại", canvas.width / 2, canvas.height / 2 + 20);
+                ctx.textAlign = "left";
+            }
+        }
+
+        function loop() {
+            update();
+            draw();
+            if (!isGameOver) {
+                requestAnimationFrame(loop);
+            }
+        }
+
+        loop();
+    </script>
+</body>
+</html>
